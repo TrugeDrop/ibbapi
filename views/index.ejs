@@ -105,36 +105,50 @@
     /* map end */
     
     /* layers */
-    var layers = [];
-    
-    function addLayer(layer, multipleLayer){
+    /*function addLayer(layer, multipleLayer){
         layers.forEach(data => {
-            if(data.options.title === "Sen") return;
             if(multipleLayer === true && data.options.title === layer.options.title) return;
             data.remove();
         });
         
         layers = layers.filter(function(a){
            if(multipleLayer === true){
-               return a.options.title === "Sen" || a.options.title === layer.options.title;
+               return a.options.title === layer.options.title;
            }
-           return a.options.title === "Sen";
+           return false;
         });
         
-        layers.push(layer);
-    };
+        Object.keys(map._layers).forEach(function(key) {
+            let layer = map._layers[key];
+            console.log(layer)
+        });
+        
+    };*/
     
     function clearLayers(){
-        layers.forEach(data => {
-            if(data.options.title === "Sen") return;
-            data.remove();
+        Object.keys(map._layers).forEach(function(key) {
+            if(key == 25) return;
+            let layer = map._layers[key];
+            if(layer.options.title === "Sen") return;
+            layer.remove();
         });
-        
-        layers = [];
     };
     /* layers end */
     
     function addToMap(e){
+        if(e.unique === true){
+            Object.keys(map._layers).forEach(function(key) {
+                try{
+                    let layer = map._layers[key];
+                    if(layer && layer.options.title === e.name) layer.remove();
+                }catch (e){
+                    console.log(e);
+                }
+            });
+        };
+        
+        if(e.multipleLayer !== true) clearLayers();
+        
         let customIcon = {
             iconUrl: e.iconURL ? e.iconURL : "https://unpkg.com/leaflet@1.6.0/dist/images/marker-icon.png",
             iconSize:[30,30]
@@ -151,7 +165,6 @@
         let marker = new L.Marker([e.coordinates[1], e.coordinates[0]], iconOptions);
         marker.addTo(map);
         marker.bindPopup(e.popupBind ? e.popupBind : `<h6>${e.name}</h6>`);
-        addLayer(marker, e.multipleLayer);
         
         if(e.openPopup === true) marker.openPopup();
         if(e.mapViewI) map.setView(L.latLng(e.coordinates[1], e.coordinates[0]), e.mapViewI);
@@ -169,12 +182,13 @@
                 
                 if(!arac) return callback({ status: 404 });
                 
-                clearLayers()
+                clearLayers();
                     
                 addToMap({
                     name: arac.properties.KapiNo,
                     coordinates: arac.geometry.coordinates,
-                    mapViewI: 15
+                    mapViewI: 13,
+                    addLayer: true
                 });
                 
                 return callback({ status: 200 });
@@ -195,19 +209,20 @@
             success: function(result){
                 if(result.features.length <= 0) return callback({ status: 404 });
                 
-                clearLayers()
+                clearLayers();
 
                 result.features.forEach(e => {
                     addToMap({
                         name: e.properties.hatkodu,
                         coordinates: e.geometry.coordinates,
                         popupBind: `<div style="display: flex!important; align-content: center; flex-direction: row; align-items: center;"><b style="font-size: 1.5rem; margin-right: 0.5rem;">${e.properties.hatkodu}</b>${e.properties.hatad}</div>${e.properties.yon}`,
-                        multipleLayer: true
+                        multipleLayer: true,
+                        addLayer: true,
+                        mapViewI: true
                      });
                });
                 
-                var target = L.latLng(41.015137, 28.979530);
-                map.setView(target, 11); 
+                map.setZoom(13);
                 
                 return callback({ status: 200 });
            },
@@ -240,15 +255,26 @@
     
     function findLocation(){
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(position => {
-               addToMap({
-                   name: "Sen",
-                   coordinates: [position.coords.longitude, position.coords.latitude],
-                   openPopup: true,
-                   mapViewI: 15,
-                   iconURL: "/images/marker-circle.png"
-               });
-            });
+            let {gc1, gc2} = [null, null];
+            function position(){
+                navigator.geolocation.getCurrentPosition(position => {                
+                   if(gc1 === position.coords.longitude || gc2 === position.coords.latitude) return;
+                    
+                   gc1 = position.coords.longitude;
+                   gc2 = position.coords.latitude;
+                    
+                   addToMap({
+                       name: "Sen",
+                       coordinates: [position.coords.longitude, position.coords.latitude],
+                       mapViewI: 14,
+                       iconURL: "/images/marker-circle.png",
+                       unique: true,
+                       multipleLayer: true
+                   });
+                });
+            };
+            position();
+            setInterval(() => position(),5000);
         } else {
             alert("Coğrafi konum bu tarayıcı tarafından desteklenmiyor.");
         }
