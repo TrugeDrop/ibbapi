@@ -12,6 +12,8 @@ filo.get('/filo', function(req, res, next) {
     let args = {};
     soap.createClient(url, function(err, client) {
         client.GetFiloAracKonum_json(args, function(err, result) {
+            if(!result.GetFiloAracKonum_jsonResult) return;
+            
             result = JSON.parse(result.GetFiloAracKonum_jsonResult);
                 result.forEach(function (e,i) {
                     if(req.query.KapiNo && req.query.KapiNo != e.KapiNo) return;
